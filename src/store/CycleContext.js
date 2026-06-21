@@ -37,6 +37,7 @@ export function CycleProvider({ children }) {
   // safe to start pushing shared changes to Supabase (avoids clobbering remote).
   const [hydrated, setHydrated] = useState(false);
   const canPush = useRef(false);
+  const applyingRemote = useRef(false); // skip the push that follows a realtime update
 
   // Apply the shared blob from Supabase onto local state.
   const applyShared = useCallback((d) => {
@@ -101,11 +102,38 @@ export function CycleProvider({ children }) {
   // Cloud sync: push shared fields to Supabase on change (after the initial pull).
   useEffect(() => {
     if (!hydrated || !SUPABASE_CONFIGURED || !canPush.current) return;
+    if (applyingRemote.current) {
+      // This change came FROM a realtime update — don't echo it back.
+      applyingRemote.current = false;
+      return;
+    }
     supabase
       .from('cycle_state')
       .upsert({ id: SHARED_ID, data: { periodStarts, periodLength, dayLogs, partnerEmail }, updated_at: new Date().toISOString() })
       .then(() => {}, () => {});
   }, [hydrated, periodStarts, periodLength, dayLogs, partnerEmail]);
+
+  // Realtime: apply the other phone's changes live.
+  useEffect(() => {
+    if (!SUPABASE_CONFIGURED) return;
+    const channel = supabase
+      .channel('cycle_state_rt')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'cycle_state', filter: `id=eq.${SHARED_ID}` },
+        (payload) => {
+          const d = payload.new?.data;
+          if (d) {
+            applyingRemote.current = true;
+            applyShared(d);
+          }
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [applyShared]);
 
   const value = useMemo(() => {
     const sorted = [...periodStarts].sort((a, b) => new Date(a) - new Date(b));

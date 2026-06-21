@@ -41,6 +41,19 @@ export default function Photo() {
     load();
   }, [load]);
 
+  // Realtime: reactions/comments from the other phone show up live.
+  useEffect(() => {
+    if (!SUPABASE_CONFIGURED || !name) return;
+    const ch = supabase
+      .channel(`photo_${name}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'photo_reactions', filter: `image=eq.${name}` }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'photo_comments', filter: `image=eq.${name}` }, () => load())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [name, load]);
+
   const myReaction = reactions.find((x) => x.author === author)?.emoji || null;
   const summary = REACTIONS.map((e) => ({ e, n: reactions.filter((r) => r.emoji === e).length })).filter((s) => s.n > 0);
 
