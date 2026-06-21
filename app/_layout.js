@@ -29,6 +29,7 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="chat" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="album" options={{ presentation: 'modal' }} />
         </Stack>
         <UsernameGate />
       </CycleProvider>

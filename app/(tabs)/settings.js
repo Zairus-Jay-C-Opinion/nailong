@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, TextInput, Pressable, Alert, Image, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, TextInput, Pressable, Alert, Image, KeyboardAvoidingView, Platform, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import NailongAvatar from '../../src/components/NailongAvatar';
@@ -9,11 +9,12 @@ import PhaseBackground from '../../src/components/PhaseBackground';
 import { useCycle } from '../../src/store/CycleContext';
 import { getPhaseTheme } from '../../src/theme/phases';
 import { personalize } from '../../src/lib/voice';
+import { ensureNotificationPermission, scheduleReminders, cancelReminders } from '../../src/lib/notifications';
 
 export default function Settings() {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
-  const { partnerEmail, setPartnerEmail, periodLength, setPeriodLength, status, username } = useCycle();
+  const { partnerEmail, setPartnerEmail, periodLength, setPeriodLength, status, username, predictions, remindersEnabled, setRemindersEnabled } = useCycle();
   const [emailDraft, setEmailDraft] = useState(partnerEmail);
   const [saved, setSaved] = useState(false);
   const theme = getPhaseTheme(status.phase);
@@ -22,6 +23,21 @@ export default function Settings() {
     setPartnerEmail(emailDraft.trim());
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  }
+
+  async function toggleReminders(value) {
+    if (value) {
+      const ok = await ensureNotificationPermission();
+      if (!ok) {
+        Alert.alert('Allow notifications', 'Enable notifications for Nailong in your phone settings to get reminders.');
+        return;
+      }
+      await scheduleReminders({ predictions, username });
+      setRemindersEnabled(true);
+    } else {
+      await cancelReminders();
+      setRemindersEnabled(false);
+    }
   }
 
   return (
@@ -75,13 +91,26 @@ export default function Settings() {
           </View>
         </Pressable>
 
+        <GlassCard className="p-5 mb-4 flex-row items-center">
+          <View className="flex-1 mr-3">
+            <Text className="text-ink font-semibold">Reminders</Text>
+            <Text className="text-ink/50 text-[11px] mt-0.5">Period heads-ups + a daily check-in nudge from Nailong</Text>
+          </View>
+          <Switch
+            value={remindersEnabled}
+            onValueChange={toggleReminders}
+            trackColor={{ false: '#E2D8C8', true: '#FF9BB0' }}
+            thumbColor={remindersEnabled ? '#FF6B8A' : '#FFFDF5'}
+          />
+        </GlassCard>
+
         <GlassCard className="p-6 items-center mb-4">
           <NailongAvatar size="md" source={MASCOT.watching} />
           <Text className="text-ink/50 text-xs text-center mt-2">{personalize('Nailong and Dad is always watching over you, Mom ❤️', username)}</Text>
         </GlassCard>
 
         <Text className="text-ink/40 text-xs px-1">
-          🔜 Coming soon: notification reminders, cloud sync (Firebase), and Nailong theme options.
+          🔜 Coming soon: cloud sync and Nailong theme options.
         </Text>
       </ScrollView>
       </KeyboardAvoidingView>

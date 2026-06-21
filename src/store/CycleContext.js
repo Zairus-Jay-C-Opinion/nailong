@@ -24,6 +24,8 @@ export function CycleProvider({ children }) {
   const [dayLogs, setDayLogs] = useState({});
   // What Nailong calls her — shown as "Mommy <username>". Empty = ask on launch.
   const [username, setUsername] = useState('');
+  // Whether local reminder notifications are on.
+  const [remindersEnabled, setRemindersEnabled] = useState(false);
 
   const value = useMemo(() => {
     const sorted = [...periodStarts].sort((a, b) => new Date(a) - new Date(b));
@@ -42,6 +44,7 @@ export function CycleProvider({ children }) {
       partnerEmail,
       dayLogs,
       username,
+      remindersEnabled,
       // derived
       status,
       predictions,
@@ -62,8 +65,9 @@ export function CycleProvider({ children }) {
       setPeriodLength,
       setPartnerEmail,
       setUsername,
+      setRemindersEnabled,
     };
-  }, [periodStarts, periodLength, partnerEmail, dayLogs, username]);
+  }, [periodStarts, periodLength, partnerEmail, dayLogs, username, remindersEnabled]);
 
   return <CycleContext.Provider value={value}>{children}</CycleContext.Provider>;
 }

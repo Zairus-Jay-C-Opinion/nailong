@@ -152,6 +152,20 @@ export default function Home() {
             <Ionicons name="chevron-forward" size={20} color="#8A8A8A" />
           </GlassCard>
         </Pressable>
+
+        {/* Our Album */}
+        <Pressable onPress={() => router.push('/album')} className="active:opacity-80 mt-3">
+          <GlassCard className="p-4 flex-row items-center">
+            <View className="w-12 h-12 rounded-2xl items-center justify-center" style={{ backgroundColor: 'rgba(255,107,138,0.18)' }}>
+              <Ionicons name="images" size={24} color="#FF6B8A" />
+            </View>
+            <View className="flex-1 ml-3">
+              <Text className="text-ink font-semibold">Our Album</Text>
+              <Text className="text-ink/50 text-sm">Share photos with Dad 💛</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#8A8A8A" />
+          </GlassCard>
+        </Pressable>
       </ScrollView>
     </PhaseBackground>
   );
