@@ -3,7 +3,7 @@
 // AFTER you deploy `nailong-api` to Vercel, set API_BASE to your project URL,
 // e.g. 'https://nailong-api.vercel.app'. Until then the app falls back to the
 // offline stubs (placeholder chat replies, pretend-sent emails).
-export const API_BASE = 'https://YOUR-PROJECT.vercel.app';
+export const API_BASE = 'https://nailong-api.vercel.app';
 
 // True once API_BASE has been pointed at a real deployment.
 export const API_CONFIGURED = !API_BASE.includes('YOUR-PROJECT');
