@@ -34,7 +34,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Nailong needs access to your photos so you can add them to your shared album."
+          "photosPermission": "Nailong needs access to your photos so you can add them to your shared album.",
+          "cameraPermission": "Nailong needs camera access so you can take a photo for your shared album."
         }
       ]
     ]

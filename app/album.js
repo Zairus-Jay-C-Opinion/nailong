@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy'; // SDK 54 moved the classic API here
 import { decode } from 'base64-arraybuffer';
 import PhaseBackground from '../src/components/PhaseBackground';
 import { useCycle } from '../src/store/CycleContext';
@@ -37,7 +37,7 @@ export default function Album() {
     if (!error && data) {
       setItems(
         data
-          .filter((f) => f.name && !f.name.startsWith('.'))
+          .filter((f) => f.name && /\.(jpe?g|png|gif|webp|heic)$/i.test(f.name))
           .map((f) => ({
             name: f.name,
             url: supabase.storage.from(ALBUM_BUCKET).getPublicUrl(f.name).data.publicUrl,
@@ -51,15 +51,36 @@ export default function Album() {
     load();
   }, [load]);
 
-  async function pickAndUpload() {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert('Allow photos', 'Let Nailong access your photos to add to the album.');
-      return;
+  function addPhoto() {
+    Alert.alert('Add a photo', undefined, [
+      { text: 'Take Photo', onPress: () => capture('camera') },
+      { text: 'Choose from Library', onPress: () => capture('library') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }
+
+  async function capture(source) {
+    let res;
+    if (source === 'camera') {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Allow camera', 'Let Nailong use the camera to take a photo.');
+        return;
+      }
+      res = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+    } else {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Allow photos', 'Let Nailong access your photos to add to the album.');
+        return;
+      }
+      res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
     }
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
     if (res.canceled) return;
-    const asset = res.assets[0];
+    await uploadAsset(res.assets[0]);
+  }
+
+  async function uploadAsset(asset) {
     try {
       setUploading(true);
       const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
@@ -111,7 +132,7 @@ export default function Album() {
 
       {SUPABASE_CONFIGURED && (
         <Pressable
-          onPress={pickAndUpload}
+          onPress={addPhoto}
           disabled={uploading}
           style={{ position: 'absolute', right: 20, bottom: insets.bottom + 24 }}
           className="active:opacity-85"
