@@ -1,4 +1,5 @@
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   averageCycleLength,
   getCycleStatus,
@@ -7,11 +8,12 @@ import {
   DEFAULT_PERIOD_LENGTH,
 } from '../lib/cycle';
 
-// App-wide cycle state. For now this lives in memory only; the next iteration
-// swaps the internals for AsyncStorage (offline) + Firestore (sync) without
-// changing this public API, so screens won't need to change.
+// App-wide cycle state, persisted to AsyncStorage so everything survives an app
+// restart. Photos/reactions/comments live in Supabase; this handles the local
+// cycle data, check-ins, settings, and username.
 
 const CycleContext = createContext(null);
+const STORAGE_KEY = 'nailong:state:v1';
 
 export function CycleProvider({ children }) {
   // Ascending list of period start dates (ISO strings). Empty = not logged yet.
@@ -26,6 +28,40 @@ export function CycleProvider({ children }) {
   const [username, setUsername] = useState('');
   // Whether local reminder notifications are on.
   const [remindersEnabled, setRemindersEnabled] = useState(false);
+  // False until we've loaded saved data — prevents overwriting storage with
+  // defaults and avoids flashing the username prompt before data loads.
+  const [hydrated, setHydrated] = useState(false);
+
+  // Load persisted state once on startup.
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const s = JSON.parse(raw);
+          if (Array.isArray(s.periodStarts)) setPeriodStarts(s.periodStarts);
+          if (typeof s.periodLength === 'number') setPeriodLength(s.periodLength);
+          if (typeof s.partnerEmail === 'string') setPartnerEmail(s.partnerEmail);
+          if (s.dayLogs && typeof s.dayLogs === 'object') setDayLogs(s.dayLogs);
+          if (typeof s.username === 'string') setUsername(s.username);
+          if (typeof s.remindersEnabled === 'boolean') setRemindersEnabled(s.remindersEnabled);
+        }
+      } catch (e) {
+        // ignore corrupt/missing storage
+      } finally {
+        setHydrated(true);
+      }
+    })();
+  }, []);
+
+  // Save whenever persisted fields change (after initial load).
+  useEffect(() => {
+    if (!hydrated) return;
+    AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ periodStarts, periodLength, partnerEmail, dayLogs, username, remindersEnabled })
+    ).catch(() => {});
+  }, [hydrated, periodStarts, periodLength, partnerEmail, dayLogs, username, remindersEnabled]);
 
   const value = useMemo(() => {
     const sorted = [...periodStarts].sort((a, b) => new Date(a) - new Date(b));
@@ -45,6 +81,7 @@ export function CycleProvider({ children }) {
       dayLogs,
       username,
       remindersEnabled,
+      hydrated,
       // derived
       status,
       predictions,
@@ -67,7 +104,7 @@ export function CycleProvider({ children }) {
       setUsername,
       setRemindersEnabled,
     };
-  }, [periodStarts, periodLength, partnerEmail, dayLogs, username, remindersEnabled]);
+  }, [periodStarts, periodLength, partnerEmail, dayLogs, username, remindersEnabled, hydrated]);
 
   return <CycleContext.Provider value={value}>{children}</CycleContext.Provider>;
 }

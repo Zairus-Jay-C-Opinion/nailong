@@ -109,9 +109,6 @@ export default function Settings() {
           <Text className="text-ink/50 text-xs text-center mt-2">{personalize('Nailong and Dad is always watching over you, Mom ❤️', username)}</Text>
         </GlassCard>
 
-        <Text className="text-ink/40 text-xs px-1">
-          🔜 Coming soon: cloud sync and Nailong theme options.
-        </Text>
       </ScrollView>
       </KeyboardAvoidingView>
     </PhaseBackground>
