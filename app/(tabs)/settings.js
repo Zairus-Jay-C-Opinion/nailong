@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, TextInput, Pressable, Alert, Image } from 'react-native';
+import { View, Text, ScrollView, TextInput, Pressable, Alert, Image, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import NailongAvatar from '../../src/components/NailongAvatar';
@@ -26,8 +26,10 @@ export default function Settings() {
 
   return (
     <PhaseBackground phase={status.phase}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 90, paddingHorizontal: 20 }}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 120, paddingHorizontal: 20 }}
       >
         <View className="flex-row items-center mb-4">
           <NailongAvatar size="sm" source={MASCOT.settings} />
@@ -44,6 +46,8 @@ export default function Settings() {
             placeholderTextColor="#B0B0B0"
             keyboardType="email-address"
             autoCapitalize="none"
+            returnKeyType="done"
+            onSubmitEditing={save}
             className="bg-white/60 border border-white/70 rounded-2xl px-4 py-3 text-ink"
           />
           <Text className="text-ink/45 text-[11px] mt-1.5">They'll get gentle nudges from Nailong</Text>
@@ -80,6 +84,7 @@ export default function Settings() {
           🔜 Coming soon: notification reminders, cloud sync (Firebase), and Nailong theme options.
         </Text>
       </ScrollView>
+      </KeyboardAvoidingView>
     </PhaseBackground>
   );
 }
