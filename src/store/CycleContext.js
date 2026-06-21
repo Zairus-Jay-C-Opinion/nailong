@@ -1,5 +1,7 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase, SUPABASE_CONFIGURED } from '../lib/supabase';
 import {
   averageCycleLength,
   getCycleStatus,
@@ -8,12 +10,15 @@ import {
   DEFAULT_PERIOD_LENGTH,
 } from '../lib/cycle';
 
-// App-wide cycle state, persisted to AsyncStorage so everything survives an app
-// restart. Photos/reactions/comments live in Supabase; this handles the local
-// cycle data, check-ins, settings, and username.
+// App-wide cycle state.
+//  - SHARED (Supabase `cycle_state`, one row): periodStarts, periodLength,
+//    dayLogs, partnerEmail — synced across both phones.
+//  - LOCAL (AsyncStorage): username + remindersEnabled (per-device), plus an
+//    offline cache of everything for instant/offline load.
 
 const CycleContext = createContext(null);
 const STORAGE_KEY = 'nailong:state:v1';
+const SHARED_ID = 'shared';
 
 export function CycleProvider({ children }) {
   // Ascending list of period start dates (ISO strings). Empty = not logged yet.
@@ -28,11 +33,31 @@ export function CycleProvider({ children }) {
   const [username, setUsername] = useState('');
   // Whether local reminder notifications are on.
   const [remindersEnabled, setRemindersEnabled] = useState(false);
-  // False until we've loaded saved data — prevents overwriting storage with
-  // defaults and avoids flashing the username prompt before data loads.
+  // hydrated: local cache loaded (UI can render). canPush: remote pull attempted,
+  // safe to start pushing shared changes to Supabase (avoids clobbering remote).
   const [hydrated, setHydrated] = useState(false);
+  const canPush = useRef(false);
 
-  // Load persisted state once on startup.
+  // Apply the shared blob from Supabase onto local state.
+  const applyShared = useCallback((d) => {
+    if (!d) return;
+    if (Array.isArray(d.periodStarts)) setPeriodStarts(d.periodStarts);
+    if (typeof d.periodLength === 'number') setPeriodLength(d.periodLength);
+    if (d.dayLogs && typeof d.dayLogs === 'object') setDayLogs(d.dayLogs);
+    if (typeof d.partnerEmail === 'string') setPartnerEmail(d.partnerEmail);
+  }, []);
+
+  const pullShared = useCallback(async () => {
+    if (!SUPABASE_CONFIGURED) return;
+    try {
+      const { data } = await supabase.from('cycle_state').select('data').eq('id', SHARED_ID).maybeSingle();
+      if (data?.data) applyShared(data.data);
+    } catch (e) {
+      // offline / table missing — keep local
+    }
+  }, [applyShared]);
+
+  // Startup: load local cache fast (offline-friendly), then pull shared from cloud.
   useEffect(() => {
     (async () => {
       try {
@@ -48,13 +73,23 @@ export function CycleProvider({ children }) {
         }
       } catch (e) {
         // ignore corrupt/missing storage
-      } finally {
-        setHydrated(true);
       }
+      setHydrated(true); // show cached data immediately
+      await pullShared(); // then sync from cloud (overrides shared fields)
+      canPush.current = true; // now safe to push our changes
     })();
-  }, []);
+  }, [pullShared]);
 
-  // Save whenever persisted fields change (after initial load).
+  // Re-pull shared data when the app comes back to the foreground (so the other
+  // phone's changes show up).
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active' && canPush.current) pullShared();
+    });
+    return () => sub.remove();
+  }, [pullShared]);
+
+  // Local cache: save everything to AsyncStorage on change (offline + instant load).
   useEffect(() => {
     if (!hydrated) return;
     AsyncStorage.setItem(
@@ -62,6 +97,15 @@ export function CycleProvider({ children }) {
       JSON.stringify({ periodStarts, periodLength, partnerEmail, dayLogs, username, remindersEnabled })
     ).catch(() => {});
   }, [hydrated, periodStarts, periodLength, partnerEmail, dayLogs, username, remindersEnabled]);
+
+  // Cloud sync: push shared fields to Supabase on change (after the initial pull).
+  useEffect(() => {
+    if (!hydrated || !SUPABASE_CONFIGURED || !canPush.current) return;
+    supabase
+      .from('cycle_state')
+      .upsert({ id: SHARED_ID, data: { periodStarts, periodLength, dayLogs, partnerEmail }, updated_at: new Date().toISOString() })
+      .then(() => {}, () => {});
+  }, [hydrated, periodStarts, periodLength, dayLogs, partnerEmail]);
 
   const value = useMemo(() => {
     const sorted = [...periodStarts].sort((a, b) => new Date(a) - new Date(b));
