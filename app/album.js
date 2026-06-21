@@ -125,7 +125,12 @@ export default function Album() {
           columnWrapperStyle={{ gap: GAP }}
           ListEmptyComponent={<Text className="text-ink/50 text-center mt-12">No photos yet. Tap + to add one 💛</Text>}
           renderItem={({ item }) => (
-            <Image source={{ uri: item.url }} style={{ width: TILE, height: TILE, borderRadius: 16, marginBottom: GAP }} />
+            <Pressable
+              onPress={() => router.push({ pathname: '/photo', params: { name: item.name, url: item.url } })}
+              className="active:opacity-80"
+            >
+              <Image source={{ uri: item.url }} style={{ width: TILE, height: TILE, borderRadius: 16, marginBottom: GAP }} />
+            </Pressable>
           )}
         />
       )}
