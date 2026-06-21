@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, Pressable, FlatList, Image, ActivityIndicator, Alert, Dimensions } from 'react-native';
+import { View, Text, Pressable, FlatList, Image, ActivityIndicator, Alert, Dimensions, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy'; // SDK 54 moved the classic API here
 import { decode } from 'base64-arraybuffer';
 import PhaseBackground from '../src/components/PhaseBackground';
+import GlassCard from '../src/components/GlassCard';
 import { useCycle } from '../src/store/CycleContext';
 import { supabase, SUPABASE_CONFIGURED, ALBUM_BUCKET } from '../src/lib/supabase';
 
@@ -14,16 +15,21 @@ const COLS = 2;
 const PAD = 16;
 const GAP = 12;
 const TILE = (Dimensions.get('window').width - PAD * 2 - GAP) / COLS;
+const REACTIONS = ['❤️', '😆', '😮', '😢', '😡', '👍'];
 
-// Shared photo album: she uploads, both partners (using the app) see the same
-// gallery. Stored in a Supabase Storage bucket.
+// Shared photo album: she uploads, both partners see the same gallery. Tap a
+// photo for reactions + comments; long-press for a quick reaction.
 export default function Album() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { status } = useCycle();
+  const { status, username } = useCycle();
+  const author = username || 'Someone';
+
   const [items, setItems] = useState([]);
+  const [reactionsByImage, setReactionsByImage] = useState({});
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [pickerFor, setPickerFor] = useState(null); // image name being reacted to
 
   const load = useCallback(async () => {
     if (!SUPABASE_CONFIGURED) {
@@ -44,12 +50,31 @@ export default function Album() {
           }))
       );
     }
+    const { data: rx } = await supabase.from('photo_reactions').select('*');
+    const map = {};
+    (rx || []).forEach((r) => {
+      if (!map[r.image]) map[r.image] = [];
+      map[r.image].push(r);
+    });
+    setReactionsByImage(map);
     setLoading(false);
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  async function reactToImage(image, emoji) {
+    setPickerFor(null);
+    if (!SUPABASE_CONFIGURED) return;
+    const mine = (reactionsByImage[image] || []).find((r) => r.author === author)?.emoji;
+    if (mine === emoji) {
+      await supabase.from('photo_reactions').delete().eq('image', image).eq('author', author);
+    } else {
+      await supabase.from('photo_reactions').upsert({ image, author, emoji }, { onConflict: 'image,author' });
+    }
+    load();
+  }
 
   function addPhoto() {
     Alert.alert('Add a photo', undefined, [
@@ -97,6 +122,13 @@ export default function Album() {
     }
   }
 
+  function summaryFor(name) {
+    const list = reactionsByImage[name] || [];
+    if (!list.length) return null;
+    const unique = [...new Set(list.map((r) => r.emoji))].slice(0, 3);
+    return { emojis: unique, count: list.length };
+  }
+
   return (
     <PhaseBackground phase={status.phase} style={{ paddingTop: insets.top }}>
       <View className="flex-row items-center px-4 py-3 bg-white/25 border-b border-white/40">
@@ -108,9 +140,7 @@ export default function Album() {
 
       {!SUPABASE_CONFIGURED ? (
         <View className="flex-1 items-center justify-center p-8">
-          <Text className="text-ink/60 text-center">
-            The album isn't connected yet. (Supabase project URL + key need to be added.)
-          </Text>
+          <Text className="text-ink/60 text-center">The album isn't connected yet.</Text>
         </View>
       ) : loading ? (
         <View className="flex-1 items-center justify-center">
@@ -124,14 +154,33 @@ export default function Album() {
           contentContainerStyle={{ padding: PAD, paddingBottom: insets.bottom + 100 }}
           columnWrapperStyle={{ gap: GAP }}
           ListEmptyComponent={<Text className="text-ink/50 text-center mt-12">No photos yet. Tap + to add one 💛</Text>}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => router.push({ pathname: '/photo', params: { name: item.name, url: item.url } })}
-              className="active:opacity-80"
-            >
-              <Image source={{ uri: item.url }} style={{ width: TILE, height: TILE, borderRadius: 16, marginBottom: GAP }} />
-            </Pressable>
-          )}
+          renderItem={({ item }) => {
+            const s = summaryFor(item.name);
+            return (
+              <Pressable
+                onPress={() => router.push({ pathname: '/photo', params: { name: item.name, url: item.url } })}
+                onLongPress={() => setPickerFor(item.name)}
+                delayLongPress={250}
+                style={{ marginBottom: GAP }}
+                className="active:opacity-80"
+              >
+                <View style={{ width: TILE, height: TILE }}>
+                  <Image source={{ uri: item.url }} style={{ width: TILE, height: TILE, borderRadius: 16 }} />
+                  {s && (
+                    <View
+                      style={{ position: 'absolute', right: 6, bottom: 6 }}
+                      className="flex-row items-center bg-white/90 rounded-full px-2 py-0.5 border border-white"
+                    >
+                      {s.emojis.map((e) => (
+                        <Text key={e} style={{ fontSize: 12 }}>{e}</Text>
+                      ))}
+                      {s.count > 1 && <Text className="text-ink/70 text-[11px] font-bold ml-1">{s.count}</Text>}
+                    </View>
+                  )}
+                </View>
+              </Pressable>
+            );
+          }}
         />
       )}
 
@@ -150,6 +199,21 @@ export default function Album() {
           </View>
         </Pressable>
       )}
+
+      {/* Long-press quick reaction picker */}
+      <Modal visible={!!pickerFor} transparent animationType="fade" onRequestClose={() => setPickerFor(null)}>
+        <Pressable className="flex-1 items-center justify-center px-6" style={{ backgroundColor: 'rgba(0,0,0,0.35)' }} onPress={() => setPickerFor(null)}>
+          <Pressable onPress={() => {}}>
+            <GlassCard intensity="heavy" className="flex-row px-2 py-2">
+              {REACTIONS.map((e) => (
+                <Pressable key={e} onPress={() => reactToImage(pickerFor, e)} className="px-2 active:opacity-60">
+                  <Text style={{ fontSize: 34 }}>{e}</Text>
+                </Pressable>
+              ))}
+            </GlassCard>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </PhaseBackground>
   );
 }

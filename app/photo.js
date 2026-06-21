@@ -85,7 +85,20 @@ export default function Photo() {
           contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
           ListHeaderComponent={
             <View>
-              <Image source={{ uri: url }} style={{ width: W, height: W }} resizeMode="cover" />
+              <View style={{ width: W, height: W }}>
+                <Image source={{ uri: url }} style={{ width: W, height: W }} resizeMode="cover" />
+                {summary.length > 0 && (
+                  <View
+                    style={{ position: 'absolute', right: 10, bottom: 10 }}
+                    className="flex-row items-center bg-white/90 rounded-full px-2.5 py-1 border border-white"
+                  >
+                    {summary.map((s) => (
+                      <Text key={s.e} style={{ fontSize: 14 }}>{s.e}</Text>
+                    ))}
+                    <Text className="text-ink/70 text-xs font-bold ml-1">{reactions.length}</Text>
+                  </View>
+                )}
+              </View>
 
               {/* Reaction bar */}
               <View className="flex-row justify-around px-3 py-3 bg-white/25 border-b border-white/40">
