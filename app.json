@@ -3,9 +3,15 @@
     "name": "nailong",
     "slug": "nailong",
     "version": "1.0.0",
+    "scheme": "nailong",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#FFF7E0"
+    },
     "ios": {
       "supportsTablet": true
     },
@@ -19,6 +25,11 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "@react-native-community/datetimepicker"
+    ]
   }
 }
