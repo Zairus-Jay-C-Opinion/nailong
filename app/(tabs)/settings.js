@@ -14,7 +14,7 @@ import { ensureNotificationPermission, scheduleReminders, cancelReminders } from
 export default function Settings() {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
-  const { partnerEmail, setPartnerEmail, periodLength, setPeriodLength, status, username, predictions, remindersEnabled, setRemindersEnabled } = useCycle();
+  const { partnerEmail, setPartnerEmail, periodLength, setPeriodLength, status, username, predictions, remindersEnabled, setRemindersEnabled, musicEnabled, setMusicEnabled } = useCycle();
   const [emailDraft, setEmailDraft] = useState(partnerEmail);
   const [saved, setSaved] = useState(false);
   const theme = getPhaseTheme(status.phase);
@@ -101,6 +101,19 @@ export default function Settings() {
             onValueChange={toggleReminders}
             trackColor={{ false: '#E2D8C8', true: '#FF9BB0' }}
             thumbColor={remindersEnabled ? '#FF6B8A' : '#FFFDF5'}
+          />
+        </GlassCard>
+
+        <GlassCard className="p-5 mb-4 flex-row items-center">
+          <View className="flex-1 mr-3">
+            <Text className="text-ink font-semibold">Background music</Text>
+            <Text className="text-ink/50 text-[11px] mt-0.5">Play a soft tune while using the app</Text>
+          </View>
+          <Switch
+            value={musicEnabled}
+            onValueChange={setMusicEnabled}
+            trackColor={{ false: '#E2D8C8', true: '#FF9BB0' }}
+            thumbColor={musicEnabled ? '#FF6B8A' : '#FFFDF5'}
           />
         </GlassCard>
 

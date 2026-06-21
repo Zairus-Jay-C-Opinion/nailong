@@ -1,5 +1,5 @@
 import '../global.css';
-import { View } from 'react-native';
+import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -11,12 +11,19 @@ import {
 } from '@expo-google-fonts/fredoka';
 import { CycleProvider, useCycle } from '../src/store/CycleContext';
 import UsernameGate from '../src/components/UsernameGate';
+import AnimatedSplash from '../src/components/AnimatedSplash';
+import BackgroundMusic from '../src/components/BackgroundMusic';
 
-// Hold the UI until persisted data has loaded (avoids flashing the name prompt
-// or an empty state before saved data hydrates).
-function Gate({ children }) {
+// Show the animated splash until fonts + saved data are ready (and a short
+// minimum so the animation is actually seen).
+function Gate({ fontsLoaded, children }) {
   const { hydrated } = useCycle();
-  if (!hydrated) return <View style={{ flex: 1, backgroundColor: '#FFF7E0' }} />;
+  const [minDone, setMinDone] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setMinDone(true), 1700);
+    return () => clearTimeout(t);
+  }, []);
+  if (!(fontsLoaded && hydrated && minDone)) return <AnimatedSplash />;
   return children;
 }
 
@@ -27,14 +34,10 @@ export default function RootLayout() {
     Fredoka_700Bold,
   });
 
-  // Brief blank until the bubbly font is ready, so headers don't flash in a
-  // different typeface.
-  if (!fontsLoaded) return null;
-
   return (
     <SafeAreaProvider>
       <CycleProvider>
-        <Gate>
+        <Gate fontsLoaded={fontsLoaded}>
           <StatusBar style="dark" />
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" />
@@ -43,6 +46,7 @@ export default function RootLayout() {
             <Stack.Screen name="photo" options={{ presentation: 'modal' }} />
           </Stack>
           <UsernameGate />
+          <BackgroundMusic />
         </Gate>
       </CycleProvider>
     </SafeAreaProvider>
