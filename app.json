@@ -16,11 +16,11 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.zairusopinion.nailong",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#FFE0B0",
+        "foregroundImage": "./assets/adaptive-foreground.png"
       }
     },
     "web": {
