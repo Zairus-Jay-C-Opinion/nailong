@@ -21,7 +21,11 @@
       "adaptiveIcon": {
         "backgroundColor": "#FFE5B5",
         "foregroundImage": "./assets/adaptive-foreground.png"
-      }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -39,6 +43,13 @@
         }
       ],
       "expo-audio"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "7003e363-b29f-4bab-9245-20dff86a832b"
+      }
+    },
+    "owner": "zairus"
   }
 }
