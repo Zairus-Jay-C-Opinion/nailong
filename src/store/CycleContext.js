@@ -33,8 +33,9 @@ export function CycleProvider({ children }) {
   const [username, setUsername] = useState('');
   // Whether local reminder notifications are on.
   const [remindersEnabled, setRemindersEnabled] = useState(false);
-  // Background music on/off (per-device).
-  const [musicEnabled, setMusicEnabled] = useState(false);
+  // Background music on/off (per-device). Defaults ON for the first launch;
+  // once she toggles it the saved value (loaded below) takes over.
+  const [musicEnabled, setMusicEnabled] = useState(true);
   // hydrated: local cache loaded (UI can render). canPush: remote pull attempted,
   // safe to start pushing shared changes to Supabase (avoids clobbering remote).
   const [hydrated, setHydrated] = useState(false);
@@ -73,7 +74,8 @@ export function CycleProvider({ children }) {
           if (s.dayLogs && typeof s.dayLogs === 'object') setDayLogs(s.dayLogs);
           if (typeof s.username === 'string') setUsername(s.username);
           if (typeof s.remindersEnabled === 'boolean') setRemindersEnabled(s.remindersEnabled);
-          if (typeof s.musicEnabled === 'boolean') setMusicEnabled(s.musicEnabled);
+          // musicEnabled is intentionally NOT loaded — music always starts ON at
+          // launch and the Settings switch controls it for the session only.
         }
       } catch (e) {
         // ignore corrupt/missing storage
@@ -98,9 +100,9 @@ export function CycleProvider({ children }) {
     if (!hydrated) return;
     AsyncStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ periodStarts, periodLength, partnerEmail, dayLogs, username, remindersEnabled, musicEnabled })
+      JSON.stringify({ periodStarts, periodLength, partnerEmail, dayLogs, username, remindersEnabled })
     ).catch(() => {});
-  }, [hydrated, periodStarts, periodLength, partnerEmail, dayLogs, username, remindersEnabled, musicEnabled]);
+  }, [hydrated, periodStarts, periodLength, partnerEmail, dayLogs, username, remindersEnabled]);
 
   // Cloud sync: push shared fields to Supabase on change (after the initial pull).
   useEffect(() => {

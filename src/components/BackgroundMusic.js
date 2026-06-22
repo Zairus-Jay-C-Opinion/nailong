@@ -1,27 +1,30 @@
 import { useEffect } from 'react';
-import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
+import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 import { useCycle } from '../store/CycleContext';
 
-// Loops background music while it's enabled in Settings. The bundled
-// assets/music.mp3 is a silent placeholder — replace it with a real track.
+// Loops background music while it's enabled in Settings. We wait for the player
+// to finish loading (status.isLoaded) before calling play() — calling it too
+// early silently no-ops, which is why music didn't start at launch.
 export default function BackgroundMusic() {
   const { musicEnabled } = useCycle();
   const player = useAudioPlayer(require('../../assets/music.mp3'));
+  const status = useAudioPlayerStatus(player);
 
+  // Allow audio even when the phone's silent switch is on.
   useEffect(() => {
     setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (!player) return;
+    if (!player || !status?.isLoaded) return;
     try {
       player.loop = true;
-      if (musicEnabled) player.play();
-      else player.pause();
+      if (musicEnabled && !status.playing) player.play();
+      else if (!musicEnabled && status.playing) player.pause();
     } catch (e) {
-      // player not ready yet — ignore
+      // player not ready yet — ignore; the status change re-runs this effect.
     }
-  }, [musicEnabled, player]);
+  }, [musicEnabled, status?.isLoaded, status?.playing, player]);
 
   return null;
 }

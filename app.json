@@ -9,8 +9,8 @@
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
-      "resizeMode": "cover",
-      "backgroundColor": "#FFF7E0"
+      "resizeMode": "contain",
+      "backgroundColor": "#EAC24E"
     },
     "ios": {
       "supportsTablet": true
@@ -19,7 +19,7 @@
       "package": "com.zairusopinion.nailong",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#FFE0B0",
+        "backgroundColor": "#FFE5B5",
         "foregroundImage": "./assets/adaptive-foreground.png"
       }
     },
