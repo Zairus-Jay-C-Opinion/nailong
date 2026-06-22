@@ -90,7 +90,7 @@ export default function AnimatedSplash() {
       <Animated.Image
         source={require('../../assets/splash.png')}
         style={[{ position: 'absolute', width, height }, artStyle]}
-        resizeMode="contain"
+        resizeMode="cover"
       />
       {sparkles.map((s, i) => (
         <Twinkle key={i} {...s} />

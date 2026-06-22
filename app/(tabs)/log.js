@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, Pressable, Platform, Image, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
+import { View, Text, ScrollView, Pressable, Platform, Image, Modal, TextInput, KeyboardAvoidingView, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -64,7 +64,7 @@ function Chip({ label, selected, onPress }) {
 export default function Log() {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
-  const { logPeriodStart, periodStarts, status, dayLogs, setDayLog, username } = useCycle();
+  const { logPeriodStart, removePeriodStart, periodStarts, status, dayLogs, setDayLog, username } = useCycle();
 
   const today = new Date();
   const [tab, setTab] = useState('log'); // 'log' | 'history'
@@ -108,6 +108,16 @@ export default function Log() {
     logPeriodStart(date);
     setJustLogged(true);
     setTimeout(() => setJustLogged(false), 2500);
+  }
+  function confirmDelete(date) {
+    Alert.alert(
+      'Delete this period start?',
+      `Remove ${formatDate(date)}? This updates your predictions and syncs to both phones.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => removePeriodStart(date) },
+      ]
+    );
   }
   function toggleSymptom(s) {
     setSymptoms((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
@@ -322,10 +332,18 @@ export default function Log() {
                   {history.map((d, i) => (
                     <GlassCard key={d} className="p-3 flex-row items-center">
                       <Image source={ICON.drop} style={{ width: 26, height: 26, marginRight: 10 }} resizeMode="contain" />
-                      <View>
+                      <View className="flex-1">
                         <Text className="text-ink font-semibold">{formatDate(d)}</Text>
                         {i === 0 && <Text className="text-ink/45 text-[10px] font-semibold">Most recent</Text>}
                       </View>
+                      <Pressable
+                        onPress={() => confirmDelete(d)}
+                        hitSlop={10}
+                        className="p-2 rounded-full active:opacity-70"
+                        accessibilityLabel={`Delete period start ${formatDate(d)}`}
+                      >
+                        <Ionicons name="trash-outline" size={20} color="#C0004A" />
+                      </Pressable>
                     </GlassCard>
                   ))}
                 </View>

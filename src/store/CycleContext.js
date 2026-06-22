@@ -173,6 +173,12 @@ export function CycleProvider({ children }) {
           return [...prev, iso];
         });
       },
+      // Remove a logged period start by its ISO string (e.g. a mistaken entry).
+      // Matches on the calendar day so it works regardless of the stored time.
+      removePeriodStart(iso) {
+        const day = new Date(iso).toISOString().slice(0, 10);
+        setPeriodStarts((prev) => prev.filter((d) => d.slice(0, 10) !== day));
+      },
       // Merge a daily check-in for a local date key ("YYYY-MM-DD").
       setDayLog(dateKey, partial) {
         setDayLogs((prev) => ({ ...prev, [dateKey]: { ...prev[dateKey], ...partial } }));
